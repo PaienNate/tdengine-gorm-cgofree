@@ -34,17 +34,21 @@ func (limit SLimit) Build(builder clause.Builder) {
 
 // MergeClause merge SLIMIT by clauses
 func (limit SLimit) MergeClause(clause *clause.Clause) {
-	clause.Name = ""
-	if v, ok := clause.Expression.(SLimit); ok {
-		if limit.Limit == 0 && v.Limit != 0 {
-			limit.Limit = v.Limit
-		}
+    clause.Name = ""
+    if v, ok := clause.Expression.(SLimit); ok {
+        if limit.Limit == 0 && v.Limit != 0 {
+            limit.Limit = v.Limit
+        }
 
 		if limit.Offset == 0 && v.Offset > 0 {
 			limit.Offset = v.Offset
 		} else if limit.Offset < 0 {
 			limit.Offset = 0
 		}
-	}
-	clause.Expression = limit
+    }
+    clause.Expression = limit
+}
+
+func SetSLimit(limit, offset int) SLimit {
+    return SLimit{Limit: limit, Offset: offset}
 }

@@ -42,6 +42,11 @@ func (Using) Name() string {
 }
 
 func (u Using) MergeClause(c *clause.Clause) {
-	c.Name = ""
-	c.Expression = u
+    c.Name = ""
+    c.Expression = u
+}
+
+func (u Using) ADDTagPair(tagName string, tagValue any) Using {
+    u.tags[tagName] = tagValue
+    return u
 }

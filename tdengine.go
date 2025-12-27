@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	_ "github.com/taosdata/driver-go/v3/taosSql"
 	"github.com/thinkgos/tdengine-gorm/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
@@ -17,13 +16,16 @@ import (
 
 var _ gorm.Dialector = Dialect{}
 
-// DefaultDriverName is the default driver name for TDengine.
-const DefaultDriverName = "taosSql"
+var DefaultDriverName = "taosSql"
 
 type Dialect struct {
 	DriverName string
 	DSN        string
 	Conn       gorm.ConnPool
+}
+
+func Open(dsn string) gorm.Dialector {
+	return &Dialect{DSN: dsn}
 }
 
 func (Dialect) Name() string {

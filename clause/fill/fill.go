@@ -18,8 +18,8 @@ const (
 )
 
 type Fill struct {
-	Type  FillType
-	Value float64 // only support Type = FillValue.
+    Type  FillType
+    Value float64 // only support Type = FillValue.
 }
 
 // Build [FILL(fill_mod_and_val)]
@@ -38,5 +38,14 @@ func (f Fill) Name() string {
 }
 
 func (f Fill) MergeClause(c *clause.Clause) {
-	c.Expression = f
+    c.Expression = f
+}
+
+func SetFill(fillType FillType) Fill {
+    return Fill{Type: fillType}
+}
+
+func (f Fill) SetValue(value float64) Fill {
+    f.Value = value
+    return f
 }

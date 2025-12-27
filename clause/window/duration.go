@@ -34,8 +34,8 @@ var durationMap = map[UnitType]struct{}{
 }
 
 type Duration struct {
-	Value uint64
-	Unit  UnitType
+    Value uint64
+    Unit  UnitType
 }
 
 func NewDuration(duration time.Duration) (*Duration, error) {
@@ -49,9 +49,9 @@ func NewDuration(duration time.Duration) (*Duration, error) {
 }
 
 func ParseDuration(durationString string) (*Duration, error) {
-	if len(durationString) < 2 {
-		return nil, errors.New("parse duration failure")
-	}
+    if len(durationString) < 2 {
+        return nil, errors.New("parse duration failure")
+    }
 	unit := UnitType(durationString[len(durationString)-1:])
 	_, valid := durationMap[unit]
 	if !valid {
@@ -62,8 +62,12 @@ func ParseDuration(durationString string) (*Duration, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Duration{
-		Value: v,
-		Unit:  unit,
-	}, nil
+    return &Duration{
+        Value: v,
+        Unit:  unit,
+    }, nil
+}
+
+func NewDurationFromTimeDuration(duration time.Duration) (*Duration, error) {
+    return NewDuration(duration)
 }
