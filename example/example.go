@@ -6,11 +6,11 @@ import (
 	"math/rand"
 	"time"
 
-	tdengine_gorm "github.com/thinkgos/tdengine-gorm"
-	"github.com/thinkgos/tdengine-gorm/clause/create"
-	"github.com/thinkgos/tdengine-gorm/clause/fill"
-	"github.com/thinkgos/tdengine-gorm/clause/using"
-	"github.com/thinkgos/tdengine-gorm/clause/window"
+	tdengine_gorm "github.com/PaienNate/tdengine-gorm-cgofree"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/create"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/fill"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/using"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/window"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -23,11 +23,11 @@ type Data struct {
 }
 
 func main() {
-	//create database
+	// create database
 	createDatabase()
-	//connect to the database
+	// connect to the database
 	db := connect()
-	//create a sTable
+	// create a sTable
 	// CREATE STABLE IF NOT EXISTS `stb_1` (`ts` TIMESTAMP,`value` BIGINT) TAGS(`tbn` BINARY(64))
 	createSTable(db)
 
@@ -48,12 +48,12 @@ func main() {
 	if tb1Data.Value != randValue {
 		log.Fatalf("expect value %v got %v", randValue, tb1Data.Value)
 	}
-	//SELECT * FROM `tb_2` WHERE `ts` = '2021-08-11 09:43:01.041'
+	// SELECT * FROM `tb_2` WHERE `ts` = '2021-08-11 09:43:01.041'
 	tb2Data := queryData(db, "tb_2", t1)
 	if tb2Data.Value != randValue2 {
 		log.Fatalf("expect value %v got %v", randValue, tb2Data.Value)
 	}
-	//SELECT * FROM `stb_1` WHERE `ts` = '2021-08-11 09:43:00.041'
+	// SELECT * FROM `stb_1` WHERE `ts` = '2021-08-11 09:43:00.041'
 	stbData := queryData(db, "stb_1", now)
 	if stbData.Value != randValue {
 		log.Fatalf("expect value %v got %v", randValue, stbData.Value)
@@ -65,7 +65,7 @@ func main() {
 	v2 := 12
 	v3 := 13
 
-	//INSERT INTO tb_aggregate USING stb_1('tbn') TAGS('tb_aggregate') (ts,value) VALUES ('2021-08-11 09:43:01.041',11),('2021-08-11 09:43:02.041',12),('2021-08-11 09:43:03.041',13)
+	// INSERT INTO tb_aggregate USING stb_1('tbn') TAGS('tb_aggregate') (ts,value) VALUES ('2021-08-11 09:43:01.041',11),('2021-08-11 09:43:02.041',12),('2021-08-11 09:43:03.041',13)
 	automaticTableCreationWhenInsertingMultiData(db, "tb_aggregate", []map[string]any{
 		{
 			"ts":    t1,
@@ -78,8 +78,8 @@ func main() {
 			"value": v3,
 		},
 	})
-	//aggregate query
-	//SELECT avg(`value`) as v FROM tb_aggregate WHERE ts >= '2021-08-11 09:43:01.041' and ts <= '2021-08-11 09:43:03.041'
+	// aggregate query
+	// SELECT avg(`value`) as v FROM tb_aggregate WHERE ts >= '2021-08-11 09:43:01.041' and ts <= '2021-08-11 09:43:03.041'
 	resultAvg := aggregateQuery(db, "tb_aggregate", "avg(`value`) as v", t1, t3, nil)
 	expectAvg := []map[string]any{
 		{
@@ -93,7 +93,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	//SELECT max(`value`) as v FROM tb_aggregate WHERE ts >= '2021-08-11 09:43:01.041' and ts <= '2021-08-11 09:43:04.041' INTERVAL(1000000u) FILL (NULL)
+	// SELECT max(`value`) as v FROM tb_aggregate WHERE ts >= '2021-08-11 09:43:01.041' and ts <= '2021-08-11 09:43:04.041' INTERVAL(1000000u) FILL (NULL)
 	resultWindowMax := aggregateQuery(db, "tb_aggregate", "max(`value`) as v", t1, t4, []clause.Expression{
 		window.SetInterval(*windowD),
 		fill.Fill{Type: fill.FillNull},
@@ -147,7 +147,7 @@ func connect() *gorm.DB {
 }
 
 func createSTable(db *gorm.DB) {
-	//create stable
+	// create stable
 	stable := create.NewSTableBuilder("stb_1").
 		IfNotExists().
 		Columns(
@@ -187,7 +187,7 @@ func createTableUsingStable(db *gorm.DB) {
 }
 
 func insertData(db *gorm.DB, tableName string, ts time.Time, value any) {
-	//insert data
+	// insert data
 	err := db.Table(tableName).Create(map[string]any{
 		"ts":    ts,
 		"value": value,
@@ -198,7 +198,7 @@ func insertData(db *gorm.DB, tableName string, ts time.Time, value any) {
 }
 
 func automaticTableCreationWhenInsertingData(db *gorm.DB, tableName string, ts time.Time, value any) {
-	//automatic table creation when inserting data
+	// automatic table creation when inserting data
 	err := db.Table(tableName).Clauses(using.SetUsing("stb_1", map[string]any{
 		"tbn": tableName,
 	})).Create(map[string]any{
@@ -220,7 +220,7 @@ func queryData(db *gorm.DB, tableName string, ts time.Time) *Data {
 }
 
 func automaticTableCreationWhenInsertingMultiData(db *gorm.DB, tableName string, data []map[string]any) {
-	//automatic table creation when inserting data
+	// automatic table creation when inserting data
 	err := db.Table(tableName).Clauses(using.SetUsing("stb_1", map[string]any{
 		"tbn": tableName,
 	})).Create(data).Error

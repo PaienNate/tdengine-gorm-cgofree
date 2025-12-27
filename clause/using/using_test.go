@@ -3,8 +3,8 @@ package using_test
 import (
 	"testing"
 
-	"github.com/thinkgos/tdengine-gorm/clause/tests"
-	"github.com/thinkgos/tdengine-gorm/clause/using"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/tests"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/using"
 	"gorm.io/gorm/clause"
 )
 

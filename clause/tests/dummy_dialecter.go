@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"github.com/thinkgos/tdengine-gorm/utils"
+	"github.com/PaienNate/tdengine-gorm-cgofree/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"

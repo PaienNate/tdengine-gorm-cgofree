@@ -3,8 +3,8 @@ package slimit_test
 import (
 	"testing"
 
-	"github.com/thinkgos/tdengine-gorm/clause/slimit"
-	"github.com/thinkgos/tdengine-gorm/clause/tests"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/slimit"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/tests"
 
 	"gorm.io/gorm/clause"
 )

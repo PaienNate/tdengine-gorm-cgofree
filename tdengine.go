@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/thinkgos/tdengine-gorm/utils"
+	"github.com/PaienNate/tdengine-gorm-cgofree/utils"
 	"gorm.io/gorm"
 	"gorm.io/gorm/callbacks"
 	"gorm.io/gorm/clause"

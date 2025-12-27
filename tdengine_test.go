@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thinkgos/tdengine-gorm/clause/create"
-	"github.com/thinkgos/tdengine-gorm/clause/fill"
-	"github.com/thinkgos/tdengine-gorm/clause/using"
-	"github.com/thinkgos/tdengine-gorm/clause/window"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/create"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/fill"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/using"
+	"github.com/PaienNate/tdengine-gorm-cgofree/clause/window"
 	"gorm.io/gorm"
 )
 
