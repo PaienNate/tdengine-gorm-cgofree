@@ -2,8 +2,11 @@
 
 package tdengine_gorm
 
-import _ "github.com/taosdata/driver-go/v3/taosSql"
+import (
+	_ "github.com/taosdata/driver-go/v3/taosSql"
+	_ "github.com/taosdata/driver-go/v3/taosWS"
+)
 
 func init() {
-    DefaultDriverName = "taosSql"
+	DefaultDriverName = "taosSql"
 }

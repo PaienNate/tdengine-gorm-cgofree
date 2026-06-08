@@ -2,9 +2,6 @@ module github.com/PaienNate/tdengine-gorm-cgofree
 
 go 1.22
 
-// 暂时保持不变
-replace github.com/taosdata/driver-go/v3 v3.7.0 => github.com/thinkgos/driver-go/v3 v3.6.1-0.20250514070202-16d60a2a4d79
-
 require (
 	github.com/taosdata/driver-go/v3 v3.7.0
 	gorm.io/gorm v1.31.1

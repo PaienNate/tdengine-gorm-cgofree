@@ -15,7 +15,12 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const testDsn = "root:taosdata@/tcp(127.0.0.1:6030)"
+func testDsn() string {
+	if tdengine_gorm.DefaultDriverName == "taosWS" {
+		return "user:password@ws(127.0.0.1:6041)"
+	}
+	return "user:password@tcp(127.0.0.1:6030)"
+}
 
 type Data struct {
 	TS    time.Time
@@ -122,7 +127,7 @@ func main() {
 }
 
 func createDatabase() {
-	dsnWithoutDB := testDsn + "/?loc=Local"
+	dsnWithoutDB := testDsn() + "/?loc=Local"
 	nativeDB, err := sql.Open(tdengine_gorm.DefaultDriverName, dsnWithoutDB)
 	if err != nil {
 		log.Fatalf("connect db error:%v", err)
@@ -137,7 +142,7 @@ func createDatabase() {
 }
 
 func connect() *gorm.DB {
-	dsn := testDsn + "/gorm_test?loc=Local"
+	dsn := testDsn() + "/gorm_test?loc=Local"
 	db, err := gorm.Open(&tdengine_gorm.Dialect{DSN: dsn})
 	if err != nil {
 		log.Fatalf("unexpected error:%v", err)

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/PaienNate/tdengine-gorm-cgofree/utils"
 	"gorm.io/gorm"
@@ -19,13 +20,18 @@ var _ gorm.Dialector = Dialect{}
 var DefaultDriverName = "taosSql"
 
 type Dialect struct {
-	DriverName string
-	DSN        string
-	Conn       gorm.ConnPool
+	DriverName        string
+	DSN               string
+	Conn              gorm.ConnPool
+	InterpolateParams *bool
 }
 
 func Open(dsn string) gorm.Dialector {
 	return &Dialect{DSN: dsn}
+}
+
+func WithInterpolateParams(enabled bool) *bool {
+	return &enabled
 }
 
 func (Dialect) Name() string {
@@ -35,6 +41,9 @@ func (Dialect) Name() string {
 func (dialect Dialect) Initialize(db *gorm.DB) (err error) {
 	if dialect.DriverName == "" {
 		dialect.DriverName = DefaultDriverName
+	}
+	if err := validateDriverDSN(dialect.DriverName, dialect.DSN); err != nil {
+		return err
 	}
 	db.SkipDefaultTransaction = true
 	db.DisableNestedTransaction = true
@@ -48,6 +57,7 @@ func (dialect Dialect) Initialize(db *gorm.DB) (err error) {
 			return err
 		}
 	}
+	db.ConnPool = newInterpolatingConnPool(db.ConnPool, interpolateParamsEnabled(dialect))
 	callbacks.RegisterDefaultCallbacks(db, &callbacks.Config{
 		LastInsertIDReversed: true,
 		QueryClauses:         []string{"SELECT", "FROM", "WHERE", "WINDOW", "FILL", "GROUP BY", "ORDER BY", "SLIMIT", "LIMIT"},
@@ -58,6 +68,39 @@ func (dialect Dialect) Initialize(db *gorm.DB) (err error) {
 		db.ClauseBuilders[k] = v
 	}
 	return nil
+}
+
+func validateDriverDSN(driverName, dsn string) error {
+	if driverName != "taosWS" {
+		return nil
+	}
+
+	net := parseDSNNetwork(dsn)
+	if net == "ws" || net == "wss" {
+		return nil
+	}
+	if net == "" {
+		net = "empty"
+	}
+	return fmt.Errorf("tdengine: taosWS requires ws/wss DSN, got %s; use user:pass@ws(host:6041)/db", net)
+}
+
+func parseDSNNetwork(dsn string) string {
+	slash := strings.LastIndexByte(dsn, '/')
+	if slash < 0 {
+		return ""
+	}
+
+	left := dsn[:slash]
+	if at := strings.LastIndexByte(left, '@'); at >= 0 {
+		left = left[at+1:]
+	}
+
+	paren := strings.IndexByte(left, '(')
+	if paren >= 0 {
+		return left[:paren]
+	}
+	return left
 }
 
 func (Dialect) ClauseBuilders() map[string]clause.ClauseBuilder {

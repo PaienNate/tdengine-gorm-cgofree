@@ -12,6 +12,38 @@
 
 Not support migrate, update, deletion and transaction
 
+## Driver and DSN
+
+The default driver depends on the build mode:
+
+* `CGO_ENABLED=1`: `taosSql`, use native TCP DSN, for example `user:password@tcp(tdengine-host:6030)/datacenter?loc=Local`
+* `CGO_ENABLED=0`: `taosWS`, use WebSocket DSN, for example `user:password@ws(tdengine-host:6041)/datacenter?loc=Local`
+
+`taosWS` requires a `ws(...)` or `wss(...)` DSN. Passing `tcp(...)` to `taosWS` fails during dialect initialization with an actionable error before a network connection is attempted.
+
+The dialect enables TDengine string parameter interpolation by default so GORM queries such as `Where("v = ?", "abc")` work with the official driver. To preserve the upstream driver behavior, disable it explicitly:
+
+```go
+db, err := gorm.Open(&tdengine_gorm.Dialect{
+    DSN:               dsn,
+    InterpolateParams: tdengine_gorm.WithInterpolateParams(false),
+})
+```
+
+Integration tests are disabled by default. Run them against an isolated test database:
+
+```sh
+TDENGINE_INTEGRATION=1 \
+TDENGINE_HOST=127.0.0.1 \
+TDENGINE_TCP_PORT=6030 \
+TDENGINE_WS_PORT=6041 \
+TDENGINE_USER=your-user \
+TDENGINE_PASSWORD=your-password \
+go test ./... -count=1
+```
+
+Set `TDENGINE_TEST_DB` to override the temporary test database name. Do not point integration tests at production databases.
+
 Add clauses
 
 * "CREATE TABLE"

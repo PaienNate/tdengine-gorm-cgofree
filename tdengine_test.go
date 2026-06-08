@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	"math/rand"
+	"os"
+	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,111 +17,166 @@ import (
 	"gorm.io/gorm"
 )
 
-const (
-	testDb       = "gorm_test"
-	dsn          = "root:taosdata@tcp(localhost:6030)/"
-	dsnWithoutDb = dsn + "?loc=Local"
-	dsnWithDb    = dsn + testDb + "?loc=Local"
-)
+type integrationConfig struct {
+	Host      string
+	TCPPort   int
+	WSPort    int
+	User      string
+	Password  string
+	Database  string
+	NativeDSN string
+	WSDSN     string
+}
+
+type driverDSN struct {
+	name   string
+	driver string
+	dsn    string
+}
+
+func tdengineIntegrationConfig(t *testing.T) integrationConfig {
+	t.Helper()
+
+	if os.Getenv("TDENGINE_INTEGRATION") != "1" {
+		t.Skip("set TDENGINE_INTEGRATION=1 to run TDengine integration tests")
+	}
+
+	host := getenvDefault("TDENGINE_HOST", "127.0.0.1")
+	tcpPort := getenvIntDefault(t, "TDENGINE_TCP_PORT", 6030)
+	wsPort := getenvIntDefault(t, "TDENGINE_WS_PORT", 6041)
+	user := getenvDefault("TDENGINE_USER", "user")
+	password := getenvDefault("TDENGINE_PASSWORD", "password")
+	dbName := getenvDefault("TDENGINE_TEST_DB", fmt.Sprintf("tdengine_gorm_cgofree_test_%d", os.Getpid()))
+
+	return integrationConfig{
+		Host:      host,
+		TCPPort:   tcpPort,
+		WSPort:    wsPort,
+		User:      user,
+		Password:  password,
+		Database:  dbName,
+		NativeDSN: fmt.Sprintf("%s:%s@tcp(%s:%d)/", user, password, host, tcpPort),
+		WSDSN:     fmt.Sprintf("%s:%s@ws(%s:%d)/", user, password, host, wsPort),
+	}
+}
+
+func getenvDefault(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
+
+func getenvIntDefault(t *testing.T, key string, fallback int) int {
+	t.Helper()
+
+	value := os.Getenv(key)
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		t.Fatalf("invalid %s %q: %v", key, value, err)
+	}
+	return parsed
+}
+
+func dsnWithDB(baseDSN, dbName string) string {
+	return strings.TrimRight(baseDSN, "/") + "/" + dbName + "?loc=Local"
+}
+
+func dsnWithoutDB(baseDSN string) string {
+	return strings.TrimRight(baseDSN, "/") + "/?loc=Local"
+}
 
 func Test_Dialect(t *testing.T) {
+	cfg := tdengineIntegrationConfig(t)
+
 	testCases := []struct {
 		name         string
-		dialect      *Dialect
-		openSuccess  bool
 		query        string
 		querySuccess bool
 	}{
 		{
-			name: "Default driver",
-			dialect: &Dialect{
-				DSN: dsn,
-			},
-			openSuccess:  true,
+			name:         "select",
 			query:        "SELECT 1",
 			querySuccess: true,
 		},
 		{
-			name: "create db",
-			dialect: &Dialect{
-				DriverName: DefaultDriverName,
-				DSN:        dsn,
-			},
-			openSuccess:  true,
-			query:        "create database if not exists `gorm_test`",
+			name:         "create db",
+			query:        fmt.Sprintf("create database if not exists `%s`", cfg.Database),
 			querySuccess: true,
 		},
 		{
-			name: "create table",
-			dialect: &Dialect{
-				DriverName: DefaultDriverName,
-				DSN:        dsn,
-			},
-			openSuccess:  true,
-			query:        "create table if not exists `gorm_test`.`test` (`ts` timestamp, `value` double)",
+			name:         "create table",
+			query:        fmt.Sprintf("create table if not exists `%s`.`test` (`ts` timestamp, `value` double)", cfg.Database),
 			querySuccess: true,
 		},
 		{
-			name: "insert data",
-			dialect: &Dialect{
-				DriverName: DefaultDriverName,
-				DSN:        dsn,
-			},
-			openSuccess:  true,
-			query:        "insert into `gorm_test`.`test` values (now,12)",
+			name:         "insert data",
+			query:        fmt.Sprintf("insert into `%s`.`test` values (now,12)", cfg.Database),
 			querySuccess: true,
 		},
 		{
-			name: "query data",
-			dialect: &Dialect{
-				DriverName: DefaultDriverName,
-				DSN:        dsn,
-			},
-			openSuccess:  true,
-			query:        "select * from `gorm_test`.`test` limit 1",
+			name:         "query data",
+			query:        fmt.Sprintf("select * from `%s`.`test` limit 1", cfg.Database),
 			querySuccess: true,
 		},
 		{
-			name: "syntax error",
-			dialect: &Dialect{
-				DriverName: DefaultDriverName,
-				DSN:        dsn,
-			},
-			openSuccess:  true,
-			query:        "select * rfom `gorm_test`.`test` limit 1",
+			name:         "syntax error",
+			query:        fmt.Sprintf("select * rfom `%s`.`test` limit 1", cfg.Database),
 			querySuccess: false,
 		},
 	}
-	for i, tc := range testCases {
-		t.Run(fmt.Sprintf("%d/%s", i, tc.name), func(t *testing.T) {
-			db, err := gorm.Open(tc.dialect, &gorm.Config{})
-			if !tc.openSuccess {
-				if err == nil {
-					t.Errorf("Expected Open to fail.")
-				}
-				return
-			}
-			if err != nil {
-				t.Errorf("Expected Open to succeed; got error: %v", err)
-				return
-			}
-			if db == nil {
-				t.Errorf("Expected db to be non-nil.")
-				return
-			}
-			if tc.query != "" {
-				err = db.Exec(tc.query).Error
-				if !tc.querySuccess {
-					if err == nil {
-						t.Errorf("Expected query to fail.")
-					}
-					return
-				}
 
-				if err != nil {
-					t.Errorf("Expected query to succeed; got error: %v", err)
-				}
+	driverDSNs := make([]driverDSN, 0, 2)
+	if DefaultDriverName == "taosSql" {
+		driverDSNs = append(driverDSNs, driverDSN{
+			name:   "native",
+			driver: "taosSql",
+			dsn:    dsnWithoutDB(cfg.NativeDSN),
+		})
+	}
+	driverDSNs = append(driverDSNs, driverDSN{
+		name:   "websocket",
+		driver: "taosWS",
+		dsn:    dsnWithoutDB(cfg.WSDSN),
+	})
+
+	for _, driverDSN := range driverDSNs {
+		t.Run(driverDSN.name, func(t *testing.T) {
+			for i, tc := range testCases {
+				t.Run(fmt.Sprintf("%d/%s", i, tc.name), func(t *testing.T) {
+					db, err := gorm.Open(&Dialect{DriverName: driverDSN.driver, DSN: driverDSN.dsn}, &gorm.Config{})
+					if err != nil {
+						t.Errorf("Expected Open to succeed; got error: %v", err)
+						return
+					}
+					if db == nil {
+						t.Errorf("Expected db to be non-nil.")
+						return
+					}
+					defer closeGormDB(t, db)
+
+					err = db.Exec(tc.query).Error
+					if !tc.querySuccess {
+						if err == nil {
+							t.Errorf("Expected query to fail.")
+						}
+						return
+					}
+					if err != nil {
+						t.Errorf("Expected query to succeed; got error: %v", err)
+					}
+				})
 			}
+
+			db, err := sql.Open(driverDSN.driver, driverDSN.dsn)
+			if err != nil {
+				t.Fatalf("open cleanup connection: %v", err)
+			}
+			defer db.Close()
+			_, _ = db.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", cfg.Database))
 		})
 	}
 }
@@ -153,22 +211,39 @@ func (*TestTbAggregate) TableName() string {
 }
 
 func Test_Clause(t *testing.T) {
-	nativeDb, err := sql.Open(DefaultDriverName, dsnWithoutDb)
+	cfg := tdengineIntegrationConfig(t)
+	baseDSN := cfg.NativeDSN
+	if DefaultDriverName == "taosWS" {
+		baseDSN = cfg.WSDSN
+	}
+
+	nativeDb, err := sql.Open(DefaultDriverName, dsnWithoutDB(baseDSN))
 	if err != nil {
 		t.Errorf("connect db error: %v", err)
 		return
 	}
-	_, err = nativeDb.Exec("CREATE DATABASE IF NOT EXISTS `gorm_test`")
-	nativeDb.Close()
+	defer nativeDb.Close()
+
+	_, err = nativeDb.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", cfg.Database))
+	if err != nil {
+		t.Errorf("drop database error: %v", err)
+		return
+	}
+	_, err = nativeDb.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", cfg.Database))
 	if err != nil {
 		t.Errorf("create database error: %v", err)
 		return
 	}
-	db, err := gorm.Open(&Dialect{DSN: dsnWithDb})
+	defer func() {
+		_, _ = nativeDb.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", cfg.Database))
+	}()
+
+	db, err := gorm.Open(&Dialect{DSN: dsnWithDB(baseDSN, cfg.Database)})
 	if err != nil {
 		t.Errorf("unexpected error:%v", err)
 		return
 	}
+	defer closeGormDB(t, db)
 	db = db.Debug()
 
 	t.Run("create stable", func(t *testing.T) {
@@ -280,7 +355,7 @@ func Test_Clause(t *testing.T) {
 	})
 
 	t.Run("tb_aggregate", func(t *testing.T) {
-		t.Run("tb_aggregate: create table using stable when insert dat", func(t *testing.T) {
+		t.Run("tb_aggregate: create table using stable when insert data", func(t *testing.T) {
 			err = db.Clauses(using.SetUsing(TestStb1, map[string]any{"tbn": "tb_aggregate"})).
 				Create([]*TestTbAggregate{
 					{t1, int64(v1)},
@@ -367,6 +442,103 @@ func Test_Clause(t *testing.T) {
 		}
 	})
 } // nolint: gocyclo
+
+func Test_StringParameters(t *testing.T) {
+	cfg := tdengineIntegrationConfig(t)
+
+	driverDSNs := make([]driverDSN, 0, 2)
+	if DefaultDriverName == "taosSql" {
+		driverDSNs = append(driverDSNs, driverDSN{
+			name:   "native",
+			driver: "taosSql",
+			dsn:    dsnWithDB(cfg.NativeDSN, cfg.Database),
+		})
+	}
+	driverDSNs = append(driverDSNs, driverDSN{
+		name:   "websocket",
+		driver: "taosWS",
+		dsn:    dsnWithDB(cfg.WSDSN, cfg.Database),
+	})
+
+	for _, driverDSN := range driverDSNs {
+		t.Run(driverDSN.name, func(t *testing.T) {
+			adminDSN := cfg.NativeDSN
+			if driverDSN.driver == "taosWS" {
+				adminDSN = cfg.WSDSN
+			}
+			admin, err := sql.Open(driverDSN.driver, dsnWithoutDB(adminDSN))
+			if err != nil {
+				t.Fatalf("open admin connection: %v", err)
+			}
+			defer admin.Close()
+
+			_, _ = admin.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", cfg.Database))
+			if _, err := admin.Exec(fmt.Sprintf("CREATE DATABASE IF NOT EXISTS `%s`", cfg.Database)); err != nil {
+				t.Fatalf("create database: %v", err)
+			}
+			defer func() {
+				_, _ = admin.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS `%s`", cfg.Database))
+			}()
+
+			db, err := gorm.Open(&Dialect{
+				DriverName:        driverDSN.driver,
+				DSN:               driverDSN.dsn,
+				InterpolateParams: WithInterpolateParams(true),
+			})
+			if err != nil {
+				t.Fatalf("open interpolating DB: %v", err)
+			}
+			defer closeGormDB(t, db)
+
+			if err := db.Exec(fmt.Sprintf("create table if not exists `%s`.`param_test` (`ts` timestamp, `v` binary(64))", cfg.Database)).Error; err != nil {
+				t.Fatalf("create table: %v", err)
+			}
+
+			value := "abc'xyz"
+			if err := db.Exec(fmt.Sprintf("insert into `%s`.`param_test` values(now, ?)", cfg.Database), value).Error; err != nil {
+				t.Fatalf("insert string parameter with interpolation enabled: %v", err)
+			}
+
+			type row struct {
+				V string
+			}
+			var got row
+			if err := db.Raw(fmt.Sprintf("select `v` from `%s`.`param_test` where `v` = ?", cfg.Database), value).Scan(&got).Error; err != nil {
+				t.Fatalf("query string parameter with interpolation enabled: %v", err)
+			}
+			if got.V != value {
+				t.Fatalf("expected queried value %q, got %q", value, got.V)
+			}
+
+			rawDB, err := gorm.Open(&Dialect{
+				DriverName:        driverDSN.driver,
+				DSN:               driverDSN.dsn,
+				InterpolateParams: WithInterpolateParams(false),
+			})
+			if err != nil {
+				t.Fatalf("open raw DB: %v", err)
+			}
+			defer closeGormDB(t, rawDB)
+
+			err = rawDB.Exec(fmt.Sprintf("insert into `%s`.`param_test` values(now, ?)", cfg.Database), "plain").Error
+			if err == nil {
+				t.Fatal("expected official driver raw interpolation to fail for string parameters")
+			}
+		})
+	}
+}
+
+func closeGormDB(t *testing.T, db *gorm.DB) {
+	t.Helper()
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("get sql DB handle: %v", err)
+	}
+	if err := sqlDB.Close(); err != nil {
+		t.Fatalf("close sql DB handle: %v", err)
+	}
+}
 
 func resultMapEqual(m1, m2 []map[string]any) bool {
 	if len(m1) != len(m2) {
