@@ -1,4 +1,6 @@
-package tdengine_gorm
+//go:build cgo
+
+package native
 
 import (
 	"github.com/PaienNate/tdengine-gorm-cgofree/internal/base"
@@ -20,7 +22,7 @@ type Dialect struct {
 }
 
 func Open(dsn string) gorm.Dialector {
-	return &Dialect{DSN: dsn}
+	return &Dialect{DriverName: DefaultDriverName, DSN: dsn}
 }
 
 func WithInterpolateParams(enabled bool) *bool {

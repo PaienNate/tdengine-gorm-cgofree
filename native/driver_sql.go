@@ -1,13 +1,13 @@
-//go:build !cgo
+//go:build cgo
 
-package tdengine_gorm
+package native
 
 import (
+	_ "github.com/taosdata/driver-go/v3/taosSql"
+
 	"github.com/PaienNate/tdengine-gorm-cgofree/internal/base"
-	_ "github.com/taosdata/driver-go/v3/taosWS"
 )
 
 func init() {
-	DefaultDriverName = "taosWS"
 	base.DefaultDriverName = DefaultDriverName
 }

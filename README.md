@@ -14,10 +14,30 @@ Not support migrate, update, deletion and transaction
 
 ## Driver and DSN
 
-The default driver depends on the build mode:
+### Root package compatibility mode
+
+The root package keeps the original behavior and chooses the default driver from the build mode:
 
 * `CGO_ENABLED=1`: `taosSql`, use native TCP DSN, for example `user:password@tcp(tdengine-host:6030)/datacenter?loc=Local`
 * `CGO_ENABLED=0`: `taosWS`, use WebSocket DSN, for example `user:password@ws(tdengine-host:6041)/datacenter?loc=Local`
+
+### Driver-isolated packages
+
+If you want to guarantee that WebSocket-only builds never import the native CGO TDengine driver, use the dedicated subpackages instead of the root package:
+
+* `github.com/PaienNate/tdengine-gorm-cgofree/ws`: always registers only `taosWS`, even when `CGO_ENABLED=1`
+* `github.com/PaienNate/tdengine-gorm-cgofree/native`: registers only `taosSql`, available only when `CGO_ENABLED=1`
+
+Example:
+
+```go
+import (
+    tdws "github.com/PaienNate/tdengine-gorm-cgofree/ws"
+    "gorm.io/gorm"
+)
+
+db, err := gorm.Open(tdws.Open("user:password@ws(tdengine-host:6041)/datacenter?loc=Local"), &gorm.Config{})
+```
 
 `taosWS` requires a `ws(...)` or `wss(...)` DSN. Passing `tcp(...)` to `taosWS` fails during dialect initialization with an actionable error before a network connection is attempted.
 

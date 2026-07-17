@@ -1,4 +1,4 @@
-package tdengine_gorm
+package ws
 
 import (
 	"github.com/PaienNate/tdengine-gorm-cgofree/internal/base"
@@ -10,7 +10,7 @@ import (
 type Migrator = base.Migrator
 type Column = base.Column
 
-var DefaultDriverName = "taosSql"
+var DefaultDriverName = "taosWS"
 
 type Dialect struct {
 	DriverName        string
@@ -20,7 +20,7 @@ type Dialect struct {
 }
 
 func Open(dsn string) gorm.Dialector {
-	return &Dialect{DSN: dsn}
+	return &Dialect{DriverName: DefaultDriverName, DSN: dsn}
 }
 
 func WithInterpolateParams(enabled bool) *bool {

@@ -49,3 +49,25 @@ func TestTaosWSAcceptsWebSocketDSN(t *testing.T) {
 	}
 	_ = sqlDB.Close()
 }
+
+func TestDefaultDriverNameStillControlsImplicitDriverSelection(t *testing.T) {
+	original := DefaultDriverName
+	DefaultDriverName = "taosWS"
+	defer func() {
+		DefaultDriverName = original
+	}()
+
+	db, err := gorm.Open(Open("user:secret@tcp(example-host:6030)/gorm_test?loc=Local"), &gorm.Config{})
+	if err == nil {
+		sqlDB, _ := db.DB()
+		if sqlDB != nil {
+			_ = sqlDB.Close()
+		}
+		t.Fatal("expected implicit driver selection to honor taosWS validation")
+	}
+
+	msg := err.Error()
+	if !strings.Contains(msg, "taosWS requires ws/wss DSN") {
+		t.Fatalf("expected taosWS validation error, got %q", msg)
+	}
+}
