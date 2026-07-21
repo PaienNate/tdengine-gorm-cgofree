@@ -17,6 +17,7 @@ type Dialect struct {
 	DSN               string
 	Conn              gorm.ConnPool
 	InterpolateParams *bool
+	QuoteIdentifiers  *bool
 }
 
 func Open(dsn string) gorm.Dialector {
@@ -25,6 +26,10 @@ func Open(dsn string) gorm.Dialector {
 
 func WithInterpolateParams(enabled bool) *bool {
 	return base.WithInterpolateParams(enabled)
+}
+
+func WithQuotedIdentifiers(enabled bool) *bool {
+	return base.WithQuotedIdentifiers(enabled)
 }
 
 func (Dialect) Name() string {
@@ -59,8 +64,8 @@ func (Dialect) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v any) {
 	base.Dialect{}.BindVarTo(writer, stmt, v)
 }
 
-func (Dialect) QuoteTo(writer clause.Writer, str string) {
-	base.Dialect{}.QuoteTo(writer, str)
+func (dialect Dialect) QuoteTo(writer clause.Writer, str string) {
+	dialect.baseDialect().QuoteTo(writer, str)
 }
 
 func (Dialect) Explain(sql string, vars ...any) string {
@@ -85,5 +90,6 @@ func (dialect Dialect) baseDialect() base.Dialect {
 		DSN:               dialect.DSN,
 		Conn:              dialect.Conn,
 		InterpolateParams: dialect.InterpolateParams,
+		QuoteIdentifiers:  dialect.QuoteIdentifiers,
 	}
 }
