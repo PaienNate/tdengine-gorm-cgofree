@@ -24,9 +24,14 @@ type Dialect struct {
 	DSN               string
 	Conn              gorm.ConnPool
 	InterpolateParams *bool
+	QuoteIdentifiers  *bool
 }
 
 func WithInterpolateParams(enabled bool) *bool {
+	return &enabled
+}
+
+func WithQuotedIdentifiers(enabled bool) *bool {
 	return &enabled
 }
 
@@ -148,7 +153,11 @@ func (Dialect) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v any) {
 	writer.WriteByte('?')
 }
 
-func (Dialect) QuoteTo(writer clause.Writer, str string) {
+func (dialect Dialect) QuoteTo(writer clause.Writer, str string) {
+	if !quoteIdentifiersEnabled(dialect) {
+		writer.WriteString(str)
+		return
+	}
 	utils.QuoteTo(writer, str)
 }
 
@@ -207,4 +216,11 @@ func (Dialect) SavePoint(tx *gorm.DB, name string) error {
 
 func (Dialect) RollbackTo(tx *gorm.DB, name string) error {
 	return errors.New("not support transaction")
+}
+
+func quoteIdentifiersEnabled(dialect Dialect) bool {
+	if dialect.QuoteIdentifiers == nil {
+		return true
+	}
+	return *dialect.QuoteIdentifiers
 }
