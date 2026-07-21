@@ -44,11 +44,78 @@ db, err := gorm.Open(tdws.Open("user:password@ws(tdengine-host:6041)/datacenter?
 The dialect enables TDengine string parameter interpolation by default so GORM queries such as `Where("v = ?", "abc")` work with the official driver. To preserve the upstream driver behavior, disable it explicitly:
 
 ```go
+import (
+    tdengine_gorm "github.com/PaienNate/tdengine-gorm-cgofree"
+    "gorm.io/gorm"
+)
+
 db, err := gorm.Open(&tdengine_gorm.Dialect{
     DSN:               dsn,
     InterpolateParams: tdengine_gorm.WithInterpolateParams(false),
 })
 ```
+
+### Identifier quoting compatibility
+
+By default, the dialect quotes identifiers with backticks. For example, table names, super table names, tag names, and column names are emitted as `` `name` ``.
+
+If you are migrating from `wild-River2016/tdengine_gorm-master` and need the old TDengine behavior during the transition, disable identifier quoting explicitly:
+
+```go
+import (
+    tdengine_gorm "github.com/PaienNate/tdengine-gorm-cgofree"
+    "gorm.io/gorm"
+)
+
+db, err := gorm.Open(&tdengine_gorm.Dialect{
+    DSN:               dsn,
+    InterpolateParams: tdengine_gorm.WithInterpolateParams(false),
+    QuoteIdentifiers:  tdengine_gorm.WithQuotedIdentifiers(false),
+}, &gorm.Config{})
+```
+
+This changes SQL generation from quoted identifiers such as:
+
+```sql
+INSERT INTO `TbName` USING `StbName` (`ts`,`value`) VALUES (?,?)
+```
+
+to unquoted identifiers:
+
+```sql
+INSERT INTO TbName USING StbName (ts,value) VALUES (?,?)
+```
+
+The same option is available in the driver-isolated packages:
+
+```go
+import (
+    tdnative "github.com/PaienNate/tdengine-gorm-cgofree/native"
+    tdws "github.com/PaienNate/tdengine-gorm-cgofree/ws"
+    "gorm.io/gorm"
+)
+
+nativeDB, err := gorm.Open(&tdnative.Dialect{
+    DriverName:        tdnative.DefaultDriverName,
+    DSN:               nativeDSN,
+    InterpolateParams: tdnative.WithInterpolateParams(false),
+    QuoteIdentifiers:  tdnative.WithQuotedIdentifiers(false),
+}, &gorm.Config{})
+
+wsDB, err := gorm.Open(&tdws.Dialect{
+    DriverName:        tdws.DefaultDriverName,
+    DSN:               wsDSN,
+    InterpolateParams: tdws.WithInterpolateParams(false),
+    QuoteIdentifiers:  tdws.WithQuotedIdentifiers(false),
+}, &gorm.Config{})
+```
+
+Notes:
+
+* `QuoteIdentifiers` only controls whether identifiers are wrapped in backticks.
+* Keep the default `true` for new code unless you specifically need legacy SQL naming compatibility.
+* Disabling identifier quoting addresses TDengine name case-sensitivity behavior during migration.
+* `DryRun` SQL can still differ from the old repository in placeholder rendering for string values; this does not affect identifier case behavior.
 
 Integration tests are disabled by default. Run them against an isolated test database:
 
