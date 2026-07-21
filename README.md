@@ -1,5 +1,7 @@
 # TDengine Gorm Dialect
 
+[中文说明](./README.zh-CN.md)
+
 [![Go.Dev reference](https://img.shields.io/badge/go.dev-reference-blue?logo=go&logoColor=white)](https://pkg.go.dev/github.com/thinkgos/tdengine-gorm?tab=doc)
 [![codecov](https://codecov.io/gh/thinkgos/tdengine-gorm/graph/badge.svg?token=aHu5wq1m6i)](https://codecov.io/gh/thinkgos/tdengine-gorm)
 [![Tests](https://github.com/thinkgos/tdengine-gorm/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/thinkgos/tdengine-gorm/actions/workflows/ci.yml)
@@ -67,10 +69,15 @@ import (
     "gorm.io/gorm"
 )
 
+db, err := gorm.Open(tdengine_gorm.OpenLegacy(dsn), &gorm.Config{})
+```
+
+`OpenLegacy` is equivalent to:
+
+```go
 db, err := gorm.Open(&tdengine_gorm.Dialect{
-    DSN:               dsn,
-    InterpolateParams: tdengine_gorm.WithInterpolateParams(false),
-    QuoteIdentifiers:  tdengine_gorm.WithQuotedIdentifiers(false),
+    DSN:              dsn,
+    QuoteIdentifiers: tdengine_gorm.WithQuotedIdentifiers(false),
 }, &gorm.Config{})
 ```
 
@@ -95,19 +102,8 @@ import (
     "gorm.io/gorm"
 )
 
-nativeDB, err := gorm.Open(&tdnative.Dialect{
-    DriverName:        tdnative.DefaultDriverName,
-    DSN:               nativeDSN,
-    InterpolateParams: tdnative.WithInterpolateParams(false),
-    QuoteIdentifiers:  tdnative.WithQuotedIdentifiers(false),
-}, &gorm.Config{})
-
-wsDB, err := gorm.Open(&tdws.Dialect{
-    DriverName:        tdws.DefaultDriverName,
-    DSN:               wsDSN,
-    InterpolateParams: tdws.WithInterpolateParams(false),
-    QuoteIdentifiers:  tdws.WithQuotedIdentifiers(false),
-}, &gorm.Config{})
+nativeDB, err := gorm.Open(tdnative.OpenLegacy(nativeDSN), &gorm.Config{})
+wsDB, err := gorm.Open(tdws.OpenLegacy(wsDSN), &gorm.Config{})
 ```
 
 Notes:

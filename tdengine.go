@@ -21,7 +21,17 @@ type Dialect struct {
 }
 
 func Open(dsn string) gorm.Dialector {
-	return &Dialect{DSN: dsn}
+	return &Dialect{
+		DSN:              dsn,
+		QuoteIdentifiers: base.WithQuotedIdentifiers(true),
+	}
+}
+
+func OpenLegacy(dsn string) gorm.Dialector {
+	return &Dialect{
+		DSN:              dsn,
+		QuoteIdentifiers: base.WithQuotedIdentifiers(false),
+	}
 }
 
 func WithInterpolateParams(enabled bool) *bool {

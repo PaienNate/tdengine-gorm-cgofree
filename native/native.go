@@ -23,7 +23,19 @@ type Dialect struct {
 }
 
 func Open(dsn string) gorm.Dialector {
-	return &Dialect{DriverName: DefaultDriverName, DSN: dsn}
+	return &Dialect{
+		DriverName:       DefaultDriverName,
+		DSN:              dsn,
+		QuoteIdentifiers: base.WithQuotedIdentifiers(true),
+	}
+}
+
+func OpenLegacy(dsn string) gorm.Dialector {
+	return &Dialect{
+		DriverName:       DefaultDriverName,
+		DSN:              dsn,
+		QuoteIdentifiers: base.WithQuotedIdentifiers(false),
+	}
 }
 
 func WithInterpolateParams(enabled bool) *bool {
